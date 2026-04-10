@@ -53,7 +53,7 @@ export default function Heatmap() {
     layersRef.current.forEach((l) => l.remove());
     layersRef.current = [];
 
-    heatmapData.forEach((point) => {
+    (Array.isArray(heatmapData) ? heatmapData : []).forEach((point) => {
       const colors = DEMAND_COLORS[point.demandLevel] ?? DEMAND_COLORS.low;
       const radius = 40 + (point.occupancyRate / 100) * 60;
 

@@ -84,9 +84,9 @@ export default function Home() {
   const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
 
-  const reportedZoneIds = new Set((reports ?? []).map((r) => r.zoneId).filter(Boolean));
+  const reportedZoneIds = new Set((Array.isArray(reports) ? reports : []).map((r) => r.zoneId).filter(Boolean));
 
-  const allZones = (zones ?? []) as Zone[];
+  const allZones = (Array.isArray(zones) ? zones : []) as Zone[];
   const highlightedIds = new Set(
     searchQuery.trim()
       ? allZones.filter((z) => z.name.toLowerCase().includes(searchQuery.toLowerCase())).map((z) => z.id)
@@ -132,7 +132,7 @@ export default function Home() {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current.clear();
 
-    (zones as Zone[]).forEach((zone) => {
+    (Array.isArray(zones) ? zones : ([] as Zone[])).forEach((zone: Zone) => {
       const hasReport = reportedZoneIds.has(zone.id);
       const icon = createDemandIcon(zone.demandLevel, zone.availableSpots, zone.totalSpots, hasReport);
       const marker = L.marker([zone.lat, zone.lng], { icon }).addTo(map);
@@ -160,7 +160,7 @@ export default function Home() {
   const handleSearch = useCallback(async () => {
     const q = searchQuery.trim();
     if (!q) return;
-    const nameMatch = (zones as Zone[] ?? []).find((z) =>
+    const nameMatch = (Array.isArray(zones) ? zones : []).find((z) =>
       z.name.toLowerCase().includes(q.toLowerCase())
     );
     if (nameMatch) {

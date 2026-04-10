@@ -11,7 +11,7 @@ export default function Zones() {
   const { data: zones, isLoading } = useListZones();
   const [search, setSearch] = useState("");
 
-  const filteredZones = zones?.filter(z => 
+  const filteredZones = (Array.isArray(zones) ? zones : []).filter(z => 
     z.name.toLowerCase().includes(search.toLowerCase()) || 
     z.zoneType.toLowerCase().includes(search.toLowerCase())
   );

@@ -57,7 +57,7 @@ export default function ZoneDetail() {
                   <Skeleton key={i} className="aspect-square rounded-md" />
                 ))
               ) : (
-                spots?.map(spot => (
+                (Array.isArray(spots) ? spots : []).map(spot => (
                   <div 
                     key={spot.id}
                     className={`aspect-square rounded-md flex items-center justify-center font-mono text-xs font-bold border-2

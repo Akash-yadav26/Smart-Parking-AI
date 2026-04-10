@@ -8,7 +8,7 @@ export default function Predictions() {
   const { data: predictions, isLoading } = useListPredictions({});
 
   // Group by zone for chart display
-  const chartData = predictions?.reduce((acc: any, curr) => {
+  const chartData = (Array.isArray(predictions) ? predictions : []).reduce((acc: any, curr) => {
     const timeSlot = curr.timeSlot;
     if (!acc[timeSlot]) {
       acc[timeSlot] = { time: timeSlot };
@@ -88,7 +88,7 @@ export default function Predictions() {
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {predictions?.slice(0,6).map((pred, i) => (
+        {(Array.isArray(predictions) ? predictions : []).slice(0,6).map((pred, i) => (
           <Card key={i}>
             <CardContent className="p-6 flex items-center justify-between">
               <div>

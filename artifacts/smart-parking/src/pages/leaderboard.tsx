@@ -47,7 +47,7 @@ export default function Leaderboard() {
             <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))
         ) : (
-          leaderboard?.map((user, i) => (
+          (Array.isArray(leaderboard) ? leaderboard : []).map((user, i) => (
             <Card 
               key={user.userId} 
               className={`overflow-hidden transition-all hover:scale-[1.01] ${

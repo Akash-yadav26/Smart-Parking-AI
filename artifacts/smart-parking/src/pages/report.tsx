@@ -71,7 +71,7 @@ export default function Report() {
                 <SelectValue placeholder="Select a parking zone" />
               </SelectTrigger>
               <SelectContent>
-                {zones?.map(zone => (
+                {(Array.isArray(zones) ? zones : []).map(zone => (
                   <SelectItem key={zone.id} value={zone.id.toString()}>{zone.name}</SelectItem>
                 ))}
               </SelectContent>
