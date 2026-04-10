@@ -81,7 +81,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </Sheet>
       </div>
 
-      <main className={`flex-1 pt-16 md:pt-0 ${location === "/" ? "overflow-hidden flex flex-col" : "overflow-y-auto"}`}>
+      <main className={`flex-1 pt-16 md:pt-0 ${location === "/" || location === "/heatmap" ? "overflow-hidden flex flex-col" : "overflow-y-auto"}`}>
         {children}
       </main>
     </div>

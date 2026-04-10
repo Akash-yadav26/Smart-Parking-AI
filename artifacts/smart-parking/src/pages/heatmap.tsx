@@ -1,35 +1,103 @@
+import { useRef, useEffect, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { useGetHeatmap } from "@workspace/api-client-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Grid3X3 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { Layers } from "lucide-react";
+
+const DEMAND_COLORS: Record<string, { fill: string; stroke: string; glow: string }> = {
+  high:   { fill: "rgba(239,68,68,0.35)",  stroke: "#ef4444", glow: "rgba(239,68,68,0.6)" },
+  medium: { fill: "rgba(245,158,11,0.35)", stroke: "#f59e0b", glow: "rgba(245,158,11,0.6)" },
+  low:    { fill: "rgba(34,197,94,0.35)",  stroke: "#22c55e", glow: "rgba(34,197,94,0.6)"  },
+};
+
+function pulseHtml(color: { fill: string; stroke: string }, size: number) {
+  return `
+    <div style="
+      width:${size}px;height:${size}px;border-radius:50%;
+      background:${color.fill};
+      border:2.5px solid ${color.stroke};
+      box-shadow:0 0 ${size * 0.6}px ${color.glow ?? color.stroke};
+      animation:heatPulse 2s ease-in-out infinite;
+    "></div>
+  `;
+}
 
 export default function Heatmap() {
   const [timeOfDay, setTimeOfDay] = useState("12:00");
   const { data: heatmapData, isLoading } = useGetHeatmap({ timeOfDay });
+  const mapElRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const layersRef = useRef<L.Layer[]>([]);
 
-  const getDemandColor = (level: string) => {
-    switch (level) {
-      case 'high': return 'bg-destructive/80 border-destructive shadow-[0_0_15px_rgba(255,0,0,0.3)]';
-      case 'medium': return 'bg-yellow-500/80 border-yellow-600 shadow-[0_0_15px_rgba(234,179,8,0.3)]';
-      case 'low': return 'bg-secondary/80 border-secondary shadow-[0_0_15px_rgba(0,255,100,0.3)]';
-      default: return 'bg-muted border-muted-foreground/30';
-    }
-  };
+  useEffect(() => {
+    if (!mapElRef.current || mapRef.current) return;
+    const map = L.map(mapElRef.current, {
+      center: [12.9716, 77.5946],
+      zoom: 12,
+      zoomControl: true,
+    });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+      className: "map-tiles-dark",
+    }).addTo(map);
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !heatmapData || isLoading) return;
+
+    layersRef.current.forEach((l) => l.remove());
+    layersRef.current = [];
+
+    heatmapData.forEach((point) => {
+      const colors = DEMAND_COLORS[point.demandLevel] ?? DEMAND_COLORS.low;
+      const radius = 40 + (point.occupancyRate / 100) * 60;
+
+      const icon = L.divIcon({
+        html: pulseHtml(colors, Math.round(radius)),
+        className: "",
+        iconSize: [Math.round(radius), Math.round(radius)],
+        iconAnchor: [Math.round(radius / 2), Math.round(radius / 2)],
+      });
+
+      const marker = L.marker([point.lat, point.lng], { icon, interactive: true }).addTo(map);
+
+      marker.bindTooltip(
+        `<div style="font-size:13px;font-weight:600">${point.zoneName ?? `Zone ${point.zoneId}`}</div>
+         <div style="font-size:12px;color:#94a3b8;margin-top:2px">${point.demandLevel.toUpperCase()} demand &nbsp;·&nbsp; ${point.occupancyRate}% occupied</div>`,
+        { direction: "top", offset: [0, -Math.round(radius / 2)], opacity: 1 }
+      );
+
+      layersRef.current.push(marker);
+    });
+  }, [heatmapData, isLoading]);
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+    <div className="flex flex-col flex-1 h-full overflow-hidden">
+      <style>{`
+        @keyframes heatPulse {
+          0%,100% { opacity:1; transform:scale(1); }
+          50% { opacity:0.7; transform:scale(1.08); }
+        }
+      `}</style>
+
+      <div className="px-4 md:px-8 py-4 flex items-center justify-between gap-4 border-b bg-background z-10 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Grid3X3 className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Layers className="h-6 w-6 text-primary" />
             Demand Heatmap
           </h1>
-          <p className="text-muted-foreground mt-1">Spatial distribution of parking demand across the city grid.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Real city map showing parking demand intensity — hover a zone to see details
+          </p>
         </div>
-        <div className="w-48">
+        <div className="flex items-center gap-3 shrink-0">
           <Select value={timeOfDay} onValueChange={setTimeOfDay}>
-            <SelectTrigger>
+            <SelectTrigger className="w-44">
               <SelectValue placeholder="Time of Day" />
             </SelectTrigger>
             <SelectContent>
@@ -42,40 +110,29 @@ export default function Heatmap() {
         </div>
       </div>
 
-      <div className="flex-1 bg-zinc-950 rounded-xl border border-zinc-800 overflow-hidden relative shadow-2xl">
-        {/* Abstract stylized grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-        
-        {isLoading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Skeleton className="w-full h-full opacity-20" />
-          </div>
-        ) : (
-          <div className="absolute inset-0 p-8 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 place-content-center">
-            {heatmapData?.map((point, i) => (
-              <div 
-                key={i} 
-                className={`relative group aspect-square rounded-md border ${getDemandColor(point.demandLevel)} transition-transform hover:scale-105 duration-200 cursor-crosshair`}
-                style={{
-                  opacity: Math.max(0.4, point.occupancyRate / 100)
-                }}
-              >
-                <div className="absolute inset-0 flex items-center justify-center text-white/90 font-mono font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-sm">
-                  {point.occupancyRate}%
-                </div>
-                {/* Tooltip on hover */}
-                <div className="hidden group-hover:block absolute z-50 -top-12 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground border px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap shadow-lg">
-                  {point.zoneName || `Zone ${point.zoneId}`}
-                </div>
-              </div>
-            ))}
+      <div className="relative flex-1 overflow-hidden">
+        {isLoading && (
+          <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-muted/60 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="text-sm text-muted-foreground font-medium">Loading heatmap…</span>
+            </div>
           </div>
         )}
-        
-        <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur border p-3 rounded-lg flex items-center gap-4 text-sm font-mono">
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-secondary shadow-[0_0_8px_var(--color-secondary)]"></div> Low Demand</div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,1)]"></div> Medium</div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-destructive shadow-[0_0_8px_var(--color-destructive)]"></div> High Demand</div>
+
+        <div ref={mapElRef} className="w-full h-full" />
+
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[1000] bg-background/90 backdrop-blur border rounded-xl px-5 py-2.5 flex items-center gap-5 text-sm font-medium shadow-lg">
+          <span className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_6px_#22c55e]"></span>Low
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_6px_#f59e0b]"></span>Medium
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_6px_#ef4444]"></span>High demand
+          </span>
+          <span className="text-muted-foreground text-xs border-l pl-4">Larger = higher occupancy</span>
         </div>
       </div>
     </div>
