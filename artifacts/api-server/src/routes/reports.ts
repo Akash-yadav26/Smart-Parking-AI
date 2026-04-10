@@ -25,7 +25,12 @@ router.get("/reports", async (req, res): Promise<void> => {
       .limit(limit);
   }
 
-  res.json(ListReportsResponse.parse(serializeMany(reports)));
+  const serialized = serializeMany(reports).map((r) => ({
+    ...r,
+    spotId: r.spotId ?? undefined,
+    userId: r.userId ?? undefined,
+  }));
+  res.json(ListReportsResponse.parse(serialized));
 });
 
 router.post("/reports", async (req, res): Promise<void> => {
