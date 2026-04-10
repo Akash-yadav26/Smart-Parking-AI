@@ -86,9 +86,12 @@ export default function Home() {
 
   const reportedZoneIds = new Set((reports ?? []).map((r) => r.zoneId).filter(Boolean));
 
-  const filteredZones = (zones ?? []).filter((z) =>
-    !searchQuery.trim() || z.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) as Zone[];
+  const allZones = (zones ?? []) as Zone[];
+  const highlightedIds = new Set(
+    searchQuery.trim()
+      ? allZones.filter((z) => z.name.toLowerCase().includes(searchQuery.toLowerCase())).map((z) => z.id)
+      : []
+  );
 
   useEffect(() => {
     if (!mapElRef.current || mapRef.current) return;
@@ -240,8 +243,8 @@ export default function Home() {
 
           <div className="px-3 py-2 border-b shrink-0 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {filteredZones.length} zone{filteredZones.length !== 1 ? "s" : ""}
-              {searchQuery ? ` matching "${searchQuery}"` : ""}
+              {allZones.length} zone{allZones.length !== 1 ? "s" : ""}
+              {highlightedIds.size > 0 && ` · ${highlightedIds.size} matched`}
             </span>
             {reportedZoneIds.size > 0 && (
               <span className="flex items-center gap-1 text-xs text-orange-500 font-medium">
@@ -254,26 +257,28 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="p-4 space-y-2">
-                {[...Array(6)].map((_, i) => (
+                {[...Array(8)].map((_, i) => (
                   <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
                 ))}
               </div>
-            ) : filteredZones.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                No zones match "{searchQuery}"
-              </div>
             ) : (
               <div className="divide-y">
-                {filteredZones.map((zone) => {
+                {[
+                  ...allZones.filter((z) => highlightedIds.has(z.id)),
+                  ...allZones.filter((z) => !highlightedIds.has(z.id)),
+                ].map((zone) => {
                   const info = demandInfo(zone.demandLevel);
                   const hasReport = reportedZoneIds.has(zone.id);
                   const isSelected = selectedZoneId === zone.id;
+                  const isMatch = highlightedIds.has(zone.id);
                   return (
                     <button
                       key={zone.id}
                       onClick={() => flyToZone(zone)}
-                      className={`w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors group ${isSelected ? "bg-primary/5 border-l-2 border-l-primary" : ""}`}
+                      className={`w-full text-left px-3 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors group
+                        ${isSelected ? "bg-primary/5 border-l-2 border-l-primary" : ""}
+                        ${isMatch && !isSelected ? "bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-400" : ""}
+                      `}
                     >
                       <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${info.bg} ${info.text}`}>
                         {zone.totalSpots > 0 ? Math.round((zone.availableSpots / zone.totalSpots) * 100) : 0}%
@@ -282,6 +287,7 @@ export default function Home() {
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-semibold leading-tight truncate">{zone.name}</span>
                           {hasReport && <Flag className="h-3 w-3 text-orange-500 shrink-0" />}
+                          {isMatch && <span className="text-[9px] bg-amber-400/20 text-amber-700 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded-full shrink-0 uppercase tracking-wide">match</span>}
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-xs text-muted-foreground capitalize">{zone.zoneType}</span>
