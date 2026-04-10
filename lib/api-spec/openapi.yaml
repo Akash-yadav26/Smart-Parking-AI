@@ -1,22 +1,33 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Smart Parking API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: zones
+    description: Parking zone operations
+  - name: spots
+    description: Parking spot operations
+  - name: reports
+    description: Crowdsourced parking reports
+  - name: predictions
+    description: AI parking predictions
+  - name: users
+    description: User and reward operations
+  - name: analytics
+    description: Heatmaps and analytics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +35,365 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /zones:
+    get:
+      operationId: listZones
+      tags: [zones]
+      summary: List all parking zones
+      parameters:
+        - name: lat
+          in: query
+          schema:
+            type: number
+        - name: lng
+          in: query
+          schema:
+            type: number
+        - name: radius
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of parking zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingZone"
+    post:
+      operationId: createZone
+      tags: [zones]
+      summary: Create a new parking zone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateParkingZoneBody"
+      responses:
+        "201":
+          description: Created zone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingZone"
+
+  /zones/{id}:
+    get:
+      operationId: getZone
+      tags: [zones]
+      summary: Get zone by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Parking zone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingZone"
+
+  /spots:
+    get:
+      operationId: listSpots
+      tags: [spots]
+      summary: List parking spots
+      parameters:
+        - name: zoneId
+          in: query
+          schema:
+            type: integer
+        - name: available
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of parking spots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingSpot"
+    post:
+      operationId: createSpot
+      tags: [spots]
+      summary: Create a parking spot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateParkingSpotBody"
+      responses:
+        "201":
+          description: Created spot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpot"
+
+  /spots/{id}:
+    get:
+      operationId: getSpot
+      tags: [spots]
+      summary: Get spot by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Parking spot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpot"
+    patch:
+      operationId: updateSpot
+      tags: [spots]
+      summary: Update a parking spot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateParkingSpotBody"
+      responses:
+        "200":
+          description: Updated spot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpot"
+
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: List crowdsourced reports
+      parameters:
+        - name: spotId
+          in: query
+          schema:
+            type: integer
+        - name: zoneId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingReport"
+    post:
+      operationId: createReport
+      tags: [reports]
+      summary: Submit a crowdsourced parking report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateParkingReportBody"
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingReport"
+
+  /predictions:
+    get:
+      operationId: listPredictions
+      tags: [predictions]
+      summary: Get AI predictions for parking availability
+      parameters:
+        - name: zoneId
+          in: query
+          schema:
+            type: integer
+        - name: targetTime
+          in: query
+          schema:
+            type: string
+        - name: dayOfWeek
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: AI predictions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingPrediction"
+
+  /predictions/best-time:
+    get:
+      operationId: getBestArrivalTime
+      tags: [predictions]
+      summary: Get the best arrival time for a zone
+      parameters:
+        - name: zoneId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Best arrival time recommendation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BestArrivalTime"
+
+  /users:
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create or register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user profile and rewards
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [users]
+      summary: Get top contributors leaderboard
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /analytics/heatmap:
+    get:
+      operationId: getHeatmap
+      tags: [analytics]
+      summary: Get demand heatmap data
+      parameters:
+        - name: timeOfDay
+          in: query
+          schema:
+            type: string
+        - name: dayOfWeek
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Heatmap data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HeatmapPoint"
+
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Get overall parking analytics summary
+      responses:
+        "200":
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+
+  /analytics/peak-hours:
+    get:
+      operationId: getPeakHours
+      tags: [analytics]
+      summary: Get peak hour demand data per zone
+      parameters:
+        - name: zoneId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Peak hours data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PeakHourData"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +404,358 @@ components:
       required:
         - status
 
+    ParkingZone:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        totalSpots:
+          type: integer
+        availableSpots:
+          type: integer
+        demandLevel:
+          type: string
+          enum: [low, medium, high]
+        zoneType:
+          type: string
+          enum: [street, mall, office, residential, mixed]
+        confidenceScore:
+          type: number
+          description: 0-100 AI confidence score for availability
+        pricePerHour:
+          type: number
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - lat
+        - lng
+        - totalSpots
+        - availableSpots
+        - demandLevel
+        - zoneType
+        - confidenceScore
+
+    CreateParkingZoneBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        totalSpots:
+          type: integer
+        zoneType:
+          type: string
+          enum: [street, mall, office, residential, mixed]
+        pricePerHour:
+          type: number
+      required:
+        - name
+        - lat
+        - lng
+        - totalSpots
+        - zoneType
+
+    ParkingSpot:
+      type: object
+      properties:
+        id:
+          type: integer
+        zoneId:
+          type: integer
+        spotNumber:
+          type: string
+        status:
+          type: string
+          enum: [available, occupied, unknown]
+        lastReportedAt:
+          type: string
+        confidenceScore:
+          type: number
+        reportCount:
+          type: integer
+      required:
+        - id
+        - zoneId
+        - spotNumber
+        - status
+        - confidenceScore
+        - reportCount
+
+    CreateParkingSpotBody:
+      type: object
+      properties:
+        zoneId:
+          type: integer
+        spotNumber:
+          type: string
+        status:
+          type: string
+          enum: [available, occupied, unknown]
+      required:
+        - zoneId
+        - spotNumber
+
+    UpdateParkingSpotBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [available, occupied, unknown]
+
+    ParkingReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        spotId:
+          type: integer
+        zoneId:
+          type: integer
+        userId:
+          type: integer
+        reportType:
+          type: string
+          enum: [leaving, arriving, available, occupied]
+        isVerified:
+          type: boolean
+        pointsEarned:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - zoneId
+        - reportType
+        - isVerified
+        - pointsEarned
+        - createdAt
+
+    CreateParkingReportBody:
+      type: object
+      properties:
+        spotId:
+          type: integer
+        zoneId:
+          type: integer
+        userId:
+          type: integer
+        reportType:
+          type: string
+          enum: [leaving, arriving, available, occupied]
+      required:
+        - zoneId
+        - reportType
+
+    ParkingPrediction:
+      type: object
+      properties:
+        zoneId:
+          type: integer
+        zoneName:
+          type: string
+        timeSlot:
+          type: string
+        availabilityProbability:
+          type: number
+          description: 0-100 probability of finding parking
+        predictedAvailableSpots:
+          type: integer
+        confidence:
+          type: string
+          enum: [low, medium, high]
+        dayOfWeek:
+          type: string
+      required:
+        - zoneId
+        - timeSlot
+        - availabilityProbability
+        - confidence
+
+    BestArrivalTime:
+      type: object
+      properties:
+        zoneId:
+          type: integer
+        bestTime:
+          type: string
+        probabilityAtBestTime:
+          type: number
+        alternativeTimes:
+          type: array
+          items:
+            type: object
+            properties:
+              time:
+                type: string
+              probability:
+                type: number
+        tip:
+          type: string
+      required:
+        - zoneId
+        - bestTime
+        - probabilityAtBestTime
+        - alternativeTimes
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        totalPoints:
+          type: integer
+        totalReports:
+          type: integer
+        accuracyRate:
+          type: number
+        trustScore:
+          type: number
+          description: 0-100 trust score based on report accuracy
+        rank:
+          type: string
+          enum: [newcomer, contributor, trusted, expert, legend]
+        rewardsEarned:
+          type: number
+          description: Total monetary rewards in INR
+        createdAt:
+          type: string
+      required:
+        - id
+        - username
+        - totalPoints
+        - totalReports
+        - accuracyRate
+        - trustScore
+        - rank
+        - rewardsEarned
+
+    CreateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+      required:
+        - username
+        - email
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: integer
+        username:
+          type: string
+        totalPoints:
+          type: integer
+        totalReports:
+          type: integer
+        accuracyRate:
+          type: number
+        badge:
+          type: string
+      required:
+        - rank
+        - userId
+        - username
+        - totalPoints
+        - totalReports
+        - accuracyRate
+        - badge
+
+    HeatmapPoint:
+      type: object
+      properties:
+        zoneId:
+          type: integer
+        zoneName:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        demandLevel:
+          type: string
+          enum: [low, medium, high]
+        occupancyRate:
+          type: number
+          description: 0-100 percentage
+        timeOfDay:
+          type: string
+        dayOfWeek:
+          type: string
+      required:
+        - zoneId
+        - lat
+        - lng
+        - demandLevel
+        - occupancyRate
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        totalZones:
+          type: integer
+        totalSpots:
+          type: integer
+        totalAvailableSpots:
+          type: integer
+        totalReportsToday:
+          type: integer
+        totalActiveUsers:
+          type: integer
+        averageConfidenceScore:
+          type: number
+        highDemandZones:
+          type: integer
+        lowDemandZones:
+          type: integer
+      required:
+        - totalZones
+        - totalSpots
+        - totalAvailableSpots
+        - totalReportsToday
+        - totalActiveUsers
+        - averageConfidenceScore
+        - highDemandZones
+        - lowDemandZones
+
+    PeakHourData:
+      type: object
+      properties:
+        hour:
+          type: integer
+        label:
+          type: string
+        occupancyRate:
+          type: number
+        demandLevel:
+          type: string
+          enum: [low, medium, high]
+        zoneId:
+          type: integer
+      required:
+        - hour
+        - label
+        - occupancyRate
+        - demandLevel
